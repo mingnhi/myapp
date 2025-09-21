@@ -5,9 +5,9 @@ WORKDIR /app
 # Cài gói cần cho native module
 RUN apk add --no-cache python3 make g++
 
-# Cài deps
+# Cài deps (GIỮ cả devDependencies để build)
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci         # ❗️ Bỏ --omit=dev ở đây
 
 # Copy source và build
 COPY . .
@@ -22,7 +22,7 @@ ENV PORT=3000
 # Cài curl để healthcheck (tùy chọn)
 RUN apk add --no-cache curl
 
-# Chỉ cài deps production, cài mới để compile bcrypt cho Alpine
+# Chỉ cài deps production cho container chạy thật
 COPY package*.json ./
 RUN npm ci --omit=dev
 
