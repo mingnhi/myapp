@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend-app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: myapp-backend:latest
+    container_name: myapp-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb+srv://minhnhi:12070123a@cluster1.appoae6.mongodb.net/booking-app?retryWrites=true&w=majority&appName=Cluster1
+    restart: always
+    networks:
+      - app-network
+
+  frontend-app:
+    build:
+      context: ./frontend/frontend     # thư mục chứa Dockerfile frontend
+      dockerfile: Dockerfile
+    image: myapp-frontend:latest
+    container_name: myapp-frontend
+    ports:
+      - "8080:80"                      # đổi 8080 tuỳ ý nếu cần
+    restart: always
+    networks:
+      - app-network
+    
+
+networks:
+  app-network:
+    driver: bridge

@@ -31,7 +31,8 @@ import { PaymentService } from 'src/payment/payment.service';
 // import { Types } from 'mongoose';
 // import { CreateMessageDto } from 'src/chat/dto/create-message.dto';
 // import { Payment } from 'src/payment/payment.shema';
-
+import { ApiTags } from '@nestjs/swagger';
+@ApiTags('admin')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @SetMetadata('roles', ['admin'])
