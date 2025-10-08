@@ -14,7 +14,7 @@ services:
       - app-network
 
   frontend-app:
-    image: truongminhhhi/myapp-frontend:latest
+    image: truongminhnhhi/myapp-frontend:latest
     container_name: myapp-frontend
     ports:
       - "8080:80"

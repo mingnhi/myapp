@@ -56,12 +56,15 @@ export class UsersService {
 
   // Xác thực người dùng dựa trên email và mật khẩu
   async validateUser(email: string, password: string): Promise<UsersDocument> {
+    console.log(' Email nhận được:', email);
     const user = await this.findByEmail(email);
+    console.log(' User trong DB:', user);
     if (!user) {
       throw new BadRequestException('Thông tin đăng nhập không hợp lệ');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log(' Mật khẩu đúng?', isPasswordValid);
     if (!isPasswordValid) {
       throw new BadRequestException('Thông tin đăng nhập không hợp lệ');
     }
