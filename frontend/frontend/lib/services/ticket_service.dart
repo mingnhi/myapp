@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:frontend/screens/auth/auth_service.dart';
+import 'package:frontend/screens/auth/auth_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -7,7 +8,7 @@ import '../models/ticket.dart';
 
 class TicketService extends ChangeNotifier {
   final String baseUrl = 'http://167.172.78.63:3000';
-  final AuthService _authService = AuthService();
+  final storage = AuthStorage();
   bool isLoading = false;
   List<Ticket> tickets = [];
   String? errorMessage;
@@ -16,7 +17,7 @@ class TicketService extends ChangeNotifier {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
-    final token = await _authService.getToken();
+    final token = await storage.readToken('accessToken');
     if (token == null) throw Exception('No access token found');
     try {
       print('Gửi yêu cầu GET đến: $baseUrl/tickets/mytickets');
@@ -28,9 +29,12 @@ class TicketService extends ChangeNotifier {
       print('Phản hồi: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        tickets = data.map((e) => Ticket.fromJson(e as Map<String, dynamic>)).toList();
+        tickets = data
+            .map((e) => Ticket.fromJson(e as Map<String, dynamic>))
+            .toList();
       } else {
-        throw Exception('Lấy danh sách ticket thất bại: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Lấy danh sách ticket thất bại: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Lỗi khi lấy danh sách ticket: $e');
@@ -46,7 +50,7 @@ class TicketService extends ChangeNotifier {
   Future<Ticket?> createTicket(Map<String, dynamic> ticketData) async {
     isLoading = true;
     notifyListeners();
-    final token = await _authService.getToken();
+    final token = await storage.readToken('accessToken');
     if (token == null) throw Exception('No access token found');
     try {
       print('Creating ticket with data: $ticketData');
@@ -58,14 +62,16 @@ class TicketService extends ChangeNotifier {
         },
         body: jsonEncode(ticketData),
       );
-      print('Create ticket response: ${response.statusCode} - ${response.body}');
+      print(
+          'Create ticket response: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final newTicket = Ticket.fromJson(data);
         tickets.add(newTicket);
         return newTicket;
       } else {
-        throw Exception('Tạo ticket thất bại: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Tạo ticket thất bại: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Lỗi khi tạo ticket: $e');
@@ -77,10 +83,11 @@ class TicketService extends ChangeNotifier {
     }
   }
 
-  Future<Ticket?> updateTicket(String id, Map<String, dynamic> ticketData) async {
+  Future<Ticket?> updateTicket(
+      String id, Map<String, dynamic> ticketData) async {
     isLoading = true;
     notifyListeners();
-    final token = await _authService.getToken();
+    final token = await storage.readToken('accessToken');
     if (token == null) throw Exception('No access token found');
     try {
       print('Updating ticket $id with data: $ticketData');
@@ -92,7 +99,8 @@ class TicketService extends ChangeNotifier {
         },
         body: jsonEncode(ticketData),
       );
-      print('Update ticket response: ${response.statusCode} - ${response.body}');
+      print(
+          'Update ticket response: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final updatedTicket = Ticket.fromJson(data);
@@ -102,7 +110,8 @@ class TicketService extends ChangeNotifier {
         }
         return updatedTicket;
       } else {
-        throw Exception('Cập nhật ticket thất bại: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Cập nhật ticket thất bại: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Lỗi khi cập nhật ticket: $e');
@@ -117,7 +126,7 @@ class TicketService extends ChangeNotifier {
   Future<bool> deleteTicket(String id) async {
     isLoading = true;
     notifyListeners();
-    final token = await _authService.getToken();
+    final token = await storage.readToken('accessToken');
     if (token == null) throw Exception('No access token found');
     try {
       print('Deleting ticket $id');
@@ -125,12 +134,14 @@ class TicketService extends ChangeNotifier {
         Uri.parse('$baseUrl/tickets/$id'),
         headers: {'Authorization': 'Bearer $token'},
       );
-      print('Delete ticket response: ${response.statusCode} - ${response.body}');
+      print(
+          'Delete ticket response: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         tickets.removeWhere((ticket) => ticket.id == id);
         return true;
       } else {
-        throw Exception('Xóa ticket thất bại: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Xóa ticket thất bại: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Lỗi khi xóa ticket: $e');
@@ -145,7 +156,7 @@ class TicketService extends ChangeNotifier {
   Future<Ticket?> fetchTicketById(String id) async {
     isLoading = true;
     notifyListeners();
-    final token = await _authService.getToken();
+    final token = await storage.readToken('accessToken');
     if (token == null) throw Exception('No access token found');
     try {
       print('Gửi yêu cầu GET đến: $baseUrl/tickets/$id');
@@ -165,7 +176,8 @@ class TicketService extends ChangeNotifier {
         }
         return ticket;
       } else {
-        throw Exception('Lấy ticket thất bại: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Lấy ticket thất bại: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Lỗi khi lấy ticket theo id: $e');

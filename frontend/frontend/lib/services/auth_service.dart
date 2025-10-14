@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:frontend/screens/auth/auth_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,7 @@ import '../models/auth.dart';
 class AuthService extends ChangeNotifier {
   final String baseUrl = 'http://167.172.78.63:3000';
   final _storage = const FlutterSecureStorage();
+  final storage = AuthStorage();
 
   bool isLoading = false;
   String? errorMessage;
@@ -23,19 +25,26 @@ class AuthService extends ChangeNotifier {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(key, value);
+      print("💾 Saved $key to SharedPreferences (Web)");
     } else {
       await _storage.write(key: key, value: value);
+      print("💾 Saved $key to SecureStorage (Mobile)");
     }
   }
 
   Future<String?> _readToken(String key) async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(key);
+      final token = prefs.getString(key);
+      print("📦 Read $key from SharedPreferences (Web): $token");
+      return token;
     } else {
-      return await _storage.read(key: key);
+      final token = await _storage.read(key: key);
+      print("📦 Read $key from SecureStorage (Mobile): $token");
+      return token;
     }
   }
+
   Future<String?> getToken() async {
     final token = await _readToken('accessToken');
     return token;
@@ -54,7 +63,7 @@ class AuthService extends ChangeNotifier {
   Future<void> _restoreSession() async {
     try {
       final token = await _readToken('accessToken');
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
         final user = await getProfile();
         if (user != null) {
           currentUser = user;
@@ -96,23 +105,19 @@ class AuthService extends ChangeNotifier {
 
         await _saveToken('accessToken', data['accessToken']);
         await _saveToken(
-            'refreshToken', data['refresh_token'] ?? data['refreshToken']);
+          'refreshToken',
+          data['refresh_token'] ?? data['refreshToken'],
+        );
 
         final loginResponse = LoginResponse.fromJson(data);
-        print('✅ Parsed LoginResponse: ${loginResponse.user?.email ?? "null"}');
-
-        if (loginResponse.user != null) {
-          currentUser = loginResponse.user!;
-          print('✅ Logged in user: ${currentUser?.email}');
-        } else {
-          errorMessage = 'Dữ liệu người dùng không hợp lệ từ máy chủ.';
-        }
-
+        currentUser = loginResponse.user;
+        print('✅ Logged in user: ${currentUser?.email}');
         notifyListeners();
         return loginResponse;
       } else {
         throw Exception(
-            'Login failed: ${response.statusCode} - ${response.body}');
+          'Login failed: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e, stack) {
       print('❌ Error logging in: $e');
@@ -129,6 +134,7 @@ class AuthService extends ChangeNotifier {
       } catch (_) {
         errorMessage = 'Đăng nhập thất bại, vui lòng thử lại.';
       }
+
       return null;
     } finally {
       isLoading = false;
@@ -180,7 +186,7 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
 
     final token = await _readToken('accessToken');
-    if (token == null) {
+    if (token == null || token.isEmpty) {
       errorMessage = 'No access token found';
       isLoading = false;
       notifyListeners();
@@ -198,18 +204,23 @@ class AuthService extends ChangeNotifier {
         currentUser = User.fromJson(jsonDecode(response.body));
         notifyListeners();
         return currentUser;
+      } else if (response.statusCode == 401) {
+        print('⚠️ Token expired, attempting refresh...');
+        await refreshToken();
       } else {
         throw Exception(
-            'Failed to get profile: ${response.statusCode} - ${response.body}');
+          'Failed to get profile: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error getting profile: $e');
       errorMessage = e.toString();
-      return null;
     } finally {
       isLoading = false;
       notifyListeners();
     }
+
+    return null;
   }
 
   // 🔄 Làm mới token
@@ -219,7 +230,8 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
 
     final refreshToken = await _readToken('refreshToken');
-    if (refreshToken == null) {
+    if (refreshToken == null || refreshToken.isEmpty) {
+      print('⚠️ No refresh token found.');
       errorMessage = 'No refresh token found';
       isLoading = false;
       notifyListeners();
@@ -233,20 +245,21 @@ class AuthService extends ChangeNotifier {
         body: jsonEncode({'refreshToken': refreshToken}),
       );
 
+      print(
+          '🔄 Refresh token response: ${response.statusCode} - ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await _saveToken('accessToken', data['accessToken']);
         await _saveToken('refreshToken', data['refresh_token']);
-
-        final loginResponse = LoginResponse.fromJson(data);
-        if (loginResponse.user != null) {
-          currentUser = loginResponse.user;
-          notifyListeners();
-        }
-        return loginResponse;
+        final refreshed = LoginResponse.fromJson(data);
+        currentUser = refreshed.user;
+        notifyListeners();
+        return refreshed;
       } else {
         throw Exception(
-            'Failed to refresh token: ${response.statusCode} - ${response.body}');
+          'Failed to refresh token: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ Error refreshing token: $e');
@@ -258,12 +271,11 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // 🚪 Đăng xuất
   Future<void> logout() async {
     await _deleteToken('accessToken');
     await _deleteToken('refreshToken');
     currentUser = null;
-    print('👋 Logged out successfully.');
+    print('Logged out successfully.');
     notifyListeners();
   }
 }

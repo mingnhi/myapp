@@ -36,7 +36,7 @@ class _SeatListScreenState extends State<SeatListScreen> with TickerProviderStat
   Future<void> _fetchTrip() async {
     final tripService = Provider.of<TripService>(context, listen: false);
     try {
-      await tripService.fetchTripById(widget.tripId, allowUnauthenticated: true);
+      await tripService.fetchTripById(widget.tripId);
     } catch (e) {
       if (mounted) {
         _showSnackBar('Lỗi khi tải thông tin chuyến đi: $e', Colors.redAccent);
