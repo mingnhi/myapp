@@ -48,6 +48,8 @@ class AuthService extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
     try {
+      print("🔹 Sending login request to: $baseUrl/auth/login");
+      print("🔹 Payload: email=$email, password=$password");
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
