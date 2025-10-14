@@ -1,48 +1,78 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import '../models/auth.dart';
 
 class AuthService extends ChangeNotifier {
   final String baseUrl = 'http://167.172.78.63:3000';
-  final _storage = FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage();
+
   bool isLoading = false;
   String? errorMessage;
   User? currentUser;
 
+  // Khởi tạo
   AuthService() {
-    // Khôi phục trạng thái đăng nhập khi khởi tạo
     _restoreSession();
   }
 
-  Future<String?> getToken() async {
-    return await _storage.read(key: 'accessToken');
+  // 🧠 Tự động chọn nơi lưu token
+  Future<void> _saveToken(String key, String value) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+    } else {
+      await _storage.write(key: key, value: value);
+    }
   }
 
+  Future<String?> _readToken(String key) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(key);
+    } else {
+      return await _storage.read(key: key);
+    }
+  }
+  Future<String?> getToken() async {
+    final token = await _readToken('accessToken');
+    return token;
+  }
+
+  Future<void> _deleteToken(String key) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(key);
+    } else {
+      await _storage.delete(key: key);
+    }
+  }
+
+  // 🔁 Khôi phục phiên đăng nhập nếu có token
   Future<void> _restoreSession() async {
     try {
-      final token = await _storage.read(key: 'accessToken');
+      final token = await _readToken('accessToken');
       if (token != null) {
-        // Thử lấy profile với token hiện tại
         final user = await getProfile();
         if (user != null) {
           currentUser = user;
           notifyListeners();
         } else {
-          // Nếu token không hợp lệ, thử làm mới token
-          final loginResponse = await refreshToken();
-          if (loginResponse != null && loginResponse.user != null) {
-            currentUser = loginResponse.user;
+          final refreshed = await refreshToken();
+          if (refreshed?.user != null) {
+            currentUser = refreshed!.user;
             notifyListeners();
           }
         }
       }
     } catch (e) {
-      print('Error restoring session: $e');
+      print('⚠️ Error restoring session: $e');
     }
   }
 
+  // 🔑 Đăng nhập
   Future<LoginResponse?> login(String email, String password) async {
     isLoading = true;
     errorMessage = null;
@@ -64,21 +94,17 @@ class AuthService extends ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
 
-        // ✅ Lưu token an toàn
-        await _storage.write(key: 'accessToken', value: data['accessToken']);
-        await _storage.write(
-          key: 'refreshToken',
-          value: data['refresh_token'] ?? data['refreshToken'],
-        );
+        await _saveToken('accessToken', data['accessToken']);
+        await _saveToken(
+            'refreshToken', data['refresh_token'] ?? data['refreshToken']);
 
         final loginResponse = LoginResponse.fromJson(data);
-        print('✅ Parsed LoginResponse: $loginResponse');
+        print('✅ Parsed LoginResponse: ${loginResponse.user?.email ?? "null"}');
 
         if (loginResponse.user != null) {
           currentUser = loginResponse.user!;
           print('✅ Logged in user: ${currentUser?.email}');
         } else {
-          print('⚠️ Warning: "user" field missing or null in backend response');
           errorMessage = 'Dữ liệu người dùng không hợp lệ từ máy chủ.';
         }
 
@@ -92,11 +118,10 @@ class AuthService extends ChangeNotifier {
       print('❌ Error logging in: $e');
       print(stack);
 
-      // ✅ Hiển thị lỗi thân thiện từ message backend
       try {
         if (e.toString().contains('Login failed')) {
-          final errorBody = e.toString().split(' - ')[1];
-          final decoded = jsonDecode(errorBody);
+          final body = e.toString().split(' - ')[1];
+          final decoded = jsonDecode(body);
           errorMessage = decoded['message'] ?? 'Đăng nhập thất bại.';
         } else {
           errorMessage = e.toString();
@@ -111,28 +136,33 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-
+  // 👤 Kiểm tra role admin
   bool isAdmin() {
     return currentUser?.role == 'admin';
   }
 
+  // 📝 Đăng ký tài khoản mới
   Future<bool> register(RegisterRequest request) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(request.toJson()),
       );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ Register success');
         return true;
       } else {
-        throw Exception('Registration failed: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Registration failed: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error registering: $e');
+      print('❌ Error registering: $e');
       errorMessage = e.toString().contains('Registration failed')
           ? jsonDecode(e.toString().split(' - ')[1])['message']
           : e.toString();
@@ -143,32 +173,37 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // 👥 Lấy thông tin profile hiện tại
   Future<User?> getProfile() async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+
+    final token = await _readToken('accessToken');
     if (token == null) {
       errorMessage = 'No access token found';
       isLoading = false;
       notifyListeners();
       return null;
     }
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/auth/profile'),
         headers: {'Authorization': 'Bearer $token'},
       );
+
       if (response.statusCode == 200) {
-        print('Profile Response: ${response.body}');
+        print('✅ Profile Response: ${response.body}');
         currentUser = User.fromJson(jsonDecode(response.body));
         notifyListeners();
         return currentUser;
       } else {
-        throw Exception('Failed to get profile: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Failed to get profile: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error getting profile: $e');
+      print('❌ Error getting profile: $e');
       errorMessage = e.toString();
       return null;
     } finally {
@@ -177,27 +212,32 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // 🔄 Làm mới token
   Future<LoginResponse?> refreshToken() async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
-    final refreshToken = await _storage.read(key: 'refreshToken');
+
+    final refreshToken = await _readToken('refreshToken');
     if (refreshToken == null) {
       errorMessage = 'No refresh token found';
       isLoading = false;
       notifyListeners();
       return null;
     }
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/refresh'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'refreshToken': refreshToken}),
       );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        await _storage.write(key: 'accessToken', value: data['accessToken']);
-        await _storage.write(key: 'refreshToken', value: data['refresh_token']);
+        await _saveToken('accessToken', data['accessToken']);
+        await _saveToken('refreshToken', data['refresh_token']);
+
         final loginResponse = LoginResponse.fromJson(data);
         if (loginResponse.user != null) {
           currentUser = loginResponse.user;
@@ -205,10 +245,11 @@ class AuthService extends ChangeNotifier {
         }
         return loginResponse;
       } else {
-        throw Exception('Failed to refresh token: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Failed to refresh token: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error refreshing token: $e');
+      print('❌ Error refreshing token: $e');
       errorMessage = e.toString();
       return null;
     } finally {
@@ -217,10 +258,12 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // 🚪 Đăng xuất
   Future<void> logout() async {
-    await _storage.delete(key: 'accessToken');
-    await _storage.delete(key: 'refreshToken');
+    await _deleteToken('accessToken');
+    await _deleteToken('refreshToken');
     currentUser = null;
+    print('👋 Logged out successfully.');
     notifyListeners();
   }
 }
