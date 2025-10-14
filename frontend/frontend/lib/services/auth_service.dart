@@ -57,10 +57,16 @@ class AuthService extends ChangeNotifier {
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
+        print(" Raw login response: $data");
         await _storage.write(key: 'accessToken', value: data['accessToken']);
         await _storage.write(key: 'refreshToken', value: data['refresh_token']);
         final loginResponse = LoginResponse.fromJson(data);
-        currentUser = loginResponse.user;
+        if (loginResponse.user != null) {
+          currentUser = loginResponse.user!;
+          notifyListeners();
+        } else {
+          print("Warning: user field is null in response.");
+        }
         notifyListeners();
         return loginResponse;
       } else {

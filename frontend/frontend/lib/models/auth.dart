@@ -1,15 +1,19 @@
 class LoginResponse {
-  final User user;
-  final String accessToken;
-  final String refreshToken;
+  final User? user;
+  final String? accessToken;
+  final String? refreshToken;
 
-  LoginResponse({required this.user, required this.accessToken, required this.refreshToken});
+  LoginResponse({
+    this.user,
+    this.accessToken,
+    this.refreshToken,
+  });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
-      user: User.fromJson(json['user']),
-      accessToken: json['accessToken'],
-      refreshToken: json['refresh_token'] ?? json['refreshToken'],
+      user: json['user'] != null ? User.fromJson(json['user']) : null,
+      accessToken: json['accessToken'] ?? json['token'] ?? '',
+      refreshToken: json['refresh_token'] ?? json['refreshToken'] ?? '',
     );
   }
 }
@@ -21,18 +25,25 @@ class User {
   final String? phoneNumber;
   final String role;
 
-  User({required this.id, required this.fullName, required this.email, this.phoneNumber, required this.role});
+  User({
+    required this.id,
+    required this.fullName,
+    required this.email,
+    this.phoneNumber,
+    required this.role,
+  });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id:json['id']?? json['_id'],
-      fullName: json['full_name'],
-      email: json['email'],
-      phoneNumber: json['phone_number'],
-      role: json['role'],
+      id: json['id'] ?? json['_id'] ?? '',
+      fullName: json['full_name'] ?? '',
+      email: json['email'] ?? '',
+      phoneNumber: json['phone_number'] ?? '',
+      role: json['role'] ?? 'user',
     );
   }
 }
+
 
 class RegisterRequest {
   final String fullName;
