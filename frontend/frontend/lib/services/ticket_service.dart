@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:frontend/screens/auth/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -6,7 +7,7 @@ import '../models/ticket.dart';
 
 class TicketService extends ChangeNotifier {
   final String baseUrl = 'http://167.172.78.63:3000';
-  final _storage = FlutterSecureStorage();
+  final AuthService _authService = AuthService();
   bool isLoading = false;
   List<Ticket> tickets = [];
   String? errorMessage;
@@ -15,7 +16,7 @@ class TicketService extends ChangeNotifier {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     if (token == null) throw Exception('No access token found');
     try {
       print('Gửi yêu cầu GET đến: $baseUrl/tickets/mytickets');
@@ -45,7 +46,7 @@ class TicketService extends ChangeNotifier {
   Future<Ticket?> createTicket(Map<String, dynamic> ticketData) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     if (token == null) throw Exception('No access token found');
     try {
       print('Creating ticket with data: $ticketData');
@@ -79,7 +80,7 @@ class TicketService extends ChangeNotifier {
   Future<Ticket?> updateTicket(String id, Map<String, dynamic> ticketData) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     if (token == null) throw Exception('No access token found');
     try {
       print('Updating ticket $id with data: $ticketData');
@@ -116,7 +117,7 @@ class TicketService extends ChangeNotifier {
   Future<bool> deleteTicket(String id) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     if (token == null) throw Exception('No access token found');
     try {
       print('Deleting ticket $id');
@@ -144,7 +145,7 @@ class TicketService extends ChangeNotifier {
   Future<Ticket?> fetchTicketById(String id) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     if (token == null) throw Exception('No access token found');
     try {
       print('Gửi yêu cầu GET đến: $baseUrl/tickets/$id');

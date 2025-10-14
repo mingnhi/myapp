@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:frontend/screens/auth/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -6,14 +7,14 @@ import '../models/seat.dart';
 
 class SeatService extends ChangeNotifier {
   final String baseUrl = 'http://167.172.78.63:3000';
-  final _storage = FlutterSecureStorage();
+  final AuthService _authService = AuthService();
   bool isLoading = false;
   List<Seat> seats = [];
 
   Future<void> fetchSeats() async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/seats'),
@@ -36,7 +37,7 @@ class SeatService extends ChangeNotifier {
   Future<void> fetchSeatsByTripId(String tripId) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/seats/trip/$tripId'),
@@ -61,7 +62,7 @@ class SeatService extends ChangeNotifier {
   Future<void> fetchAvailableSeatsByTripId(String tripId) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/seats/available/$tripId'),
@@ -86,7 +87,7 @@ class SeatService extends ChangeNotifier {
   Future<Seat?> createSeat(Seat seat) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/seats'),
@@ -110,7 +111,7 @@ class SeatService extends ChangeNotifier {
   Future<Seat?> updateSeat(String id, Seat seat) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/seats/$id'),
@@ -134,7 +135,7 @@ class SeatService extends ChangeNotifier {
   Future<bool> deleteSeat(String id) async {
     isLoading = true;
     notifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl/seats/$id'),

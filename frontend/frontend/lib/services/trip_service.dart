@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:frontend/screens/auth/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -7,7 +8,9 @@ import '../models/trip.dart';
 
 class TripService extends ChangeNotifier {
   final String baseUrl = 'http://167.172.78.63:3000';
+  final AuthService _authService = AuthService();
   final _storage = FlutterSecureStorage();
+
   bool isLoading = false;
   List<Trip> trips = [];
   String? errorMessage;
@@ -40,7 +43,7 @@ class TripService extends ChangeNotifier {
     try {
       String? token;
       if (!allowUnauthenticated) {
-        token = await _storage.read(key: 'accessToken');
+        token = await _authService.getToken();
         if (token == null) {
           throw Exception('No access token found');
         }
@@ -179,7 +182,7 @@ class TripService extends ChangeNotifier {
     isLoading = true;
     errorMessage = null;
     safeNotifyListeners();
-    final token = await _storage.read(key: 'accessToken');
+    final token = await _authService.getToken();
     if (token == null) {
       errorMessage = 'No access token found';
       isLoading = false;
