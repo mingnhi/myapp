@@ -56,19 +56,37 @@ class AuthService extends ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         await _storage.write(key: 'accessToken', value: data['accessToken']);
-        await _storage.write(key: 'refreshToken', value: data['refresh_token']);
+        await _storage.write(
+          key: 'refreshToken',
+          value: data['refresh_token'] ?? data['refreshToken'],
+        );
         final loginResponse = LoginResponse.fromJson(data);
-        currentUser = loginResponse.user;
-        notifyListeners();
+        if (loginResponse.user != null) {
+          currentUser = loginResponse.user!;
+          notifyListeners();
+        } else {
+          errorMessage =
+              'Không thể đọc thông tin người dùng từ phản hồi máy chủ.';
+        }
         return loginResponse;
       } else {
-        throw Exception('Login failed: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Login failed: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Error logging in: $e');
-      errorMessage = e.toString().contains('Login failed')
-          ? jsonDecode(e.toString().split(' - ')[1])['message']
-          : e.toString();
+      try {
+        // ✅ Hiển thị lỗi thân thiện từ message backend
+        if (e.toString().contains('Login failed')) {
+          final errorBody = e.toString().split(' - ')[1];
+          final decoded = jsonDecode(errorBody);
+          errorMessage = decoded['message'] ?? 'Đăng nhập thất bại.';
+        } else {
+          errorMessage = e.toString();
+        }
+      } catch (_) {
+        errorMessage = 'Đăng nhập thất bại, vui lòng thử lại.';
+      }
       return null;
     } finally {
       isLoading = false;
@@ -93,7 +111,8 @@ class AuthService extends ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
-        throw Exception('Registration failed: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Registration failed: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Error registering: $e');
@@ -129,7 +148,8 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
         return currentUser;
       } else {
-        throw Exception('Failed to get profile: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Failed to get profile: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Error getting profile: $e');
@@ -169,7 +189,8 @@ class AuthService extends ChangeNotifier {
         }
         return loginResponse;
       } else {
-        throw Exception('Failed to refresh token: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Failed to refresh token: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Error refreshing token: $e');

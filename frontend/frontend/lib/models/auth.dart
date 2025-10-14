@@ -9,7 +9,7 @@ class LoginResponse {
     return LoginResponse(
       user: User.fromJson(json['user']),
       accessToken: json['accessToken'],
-      refreshToken: json['refresh_token'],
+      refreshToken: json['refresh_token'] ?? json['refreshToken'],
     );
   }
 }
@@ -25,7 +25,7 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['_id'],
+      id:json['id']?? json['_id'],
       fullName: json['full_name'],
       email: json['email'],
       phoneNumber: json['phone_number'],
