@@ -8,7 +8,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI=mongodb+srv://minhnhi:12070123a@cluster1.appoae6.mongodb.net/booking-app?retryWrites=true&w=majority&appName=Cluster1
     restart: always
     networks:
       - app-network
