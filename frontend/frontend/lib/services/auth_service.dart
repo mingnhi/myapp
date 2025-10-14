@@ -47,42 +47,70 @@ class AuthService extends ChangeNotifier {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
+
     try {
-      print("🔹 Sending login request to: $baseUrl/auth/login");
-      print("🔹 Payload: email=$email, password=$password");
+      final url = Uri.parse('$baseUrl/auth/login');
+      print('🔹 Sending login request to: $url');
+      print('🔹 Payload: email=$email, password=$password');
+
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
+        url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
+
+      print('🔹 Raw response (${response.statusCode}): ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        print(" Raw login response: $data");
+
+        // ✅ Lưu token an toàn
         await _storage.write(key: 'accessToken', value: data['accessToken']);
-        await _storage.write(key: 'refreshToken', value: data['refresh_token']);
+        await _storage.write(
+          key: 'refreshToken',
+          value: data['refresh_token'] ?? data['refreshToken'],
+        );
+
         final loginResponse = LoginResponse.fromJson(data);
+        print('✅ Parsed LoginResponse: $loginResponse');
+
         if (loginResponse.user != null) {
           currentUser = loginResponse.user!;
-          notifyListeners();
+          print('✅ Logged in user: ${currentUser?.email}');
         } else {
-          print("Warning: user field is null in response.");
+          print('⚠️ Warning: "user" field missing or null in backend response');
+          errorMessage = 'Dữ liệu người dùng không hợp lệ từ máy chủ.';
         }
+
         notifyListeners();
         return loginResponse;
       } else {
-        throw Exception('Login failed: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Login failed: ${response.statusCode} - ${response.body}');
       }
-    } catch (e) {
-      print('Error logging in: $e');
-      errorMessage = e.toString().contains('Login failed')
-          ? jsonDecode(e.toString().split(' - ')[1])['message']
-          : e.toString();
+    } catch (e, stack) {
+      print('❌ Error logging in: $e');
+      print(stack);
+
+      // ✅ Hiển thị lỗi thân thiện từ message backend
+      try {
+        if (e.toString().contains('Login failed')) {
+          final errorBody = e.toString().split(' - ')[1];
+          final decoded = jsonDecode(errorBody);
+          errorMessage = decoded['message'] ?? 'Đăng nhập thất bại.';
+        } else {
+          errorMessage = e.toString();
+        }
+      } catch (_) {
+        errorMessage = 'Đăng nhập thất bại, vui lòng thử lại.';
+      }
       return null;
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
+
 
   bool isAdmin() {
     return currentUser?.role == 'admin';

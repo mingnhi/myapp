@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:frontend/models/user.dart';
 
 class AuthService extends ChangeNotifier {
-  final String baseUrl = 'https://booking-app-1-bzfs.onrender.com';
+  final String baseUrl = 'http://167.172.78.63:3000';
   final _storage = FlutterSecureStorage();
   bool isLoading = false;
   String? errorMessage;
@@ -47,36 +47,53 @@ class AuthService extends ChangeNotifier {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
+
     try {
+      final url = Uri.parse('$baseUrl/auth/login');
+      print('🔹 Sending login request to: $url');
+      print('🔹 Payload: email=$email, password=$password');
+
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
+        url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
+
+      print('🔹 Raw response (${response.statusCode}): ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
+
+        // ✅ Lưu token an toàn
         await _storage.write(key: 'accessToken', value: data['accessToken']);
         await _storage.write(
           key: 'refreshToken',
           value: data['refresh_token'] ?? data['refreshToken'],
         );
+
         final loginResponse = LoginResponse.fromJson(data);
+        print('Parsed LoginResponse: $loginResponse');
+
         if (loginResponse.user != null) {
           currentUser = loginResponse.user!;
-          notifyListeners();
+          print('Logged in user: ${currentUser?.email}');
         } else {
-          errorMessage =
-              'Không thể đọc thông tin người dùng từ phản hồi máy chủ.';
+          print('Warning: "user" field missing or null in backend response');
+          errorMessage = 'Dữ liệu người dùng không hợp lệ từ máy chủ.';
         }
+
+        notifyListeners();
         return loginResponse;
       } else {
         throw Exception(
             'Login failed: ${response.statusCode} - ${response.body}');
       }
-    } catch (e) {
-      print('Error logging in: $e');
+    } catch (e, stack) {
+      print('❌ Error logging in: $e');
+      print(stack);
+
+      // ✅ Hiển thị lỗi thân thiện từ message backend
       try {
-        // ✅ Hiển thị lỗi thân thiện từ message backend
         if (e.toString().contains('Login failed')) {
           final errorBody = e.toString().split(' - ')[1];
           final decoded = jsonDecode(errorBody);
@@ -93,6 +110,7 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
     }
   }
+
 
   bool isAdmin() {
     return currentUser?.role == 'admin';
