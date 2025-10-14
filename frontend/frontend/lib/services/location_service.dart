@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/location.dart';
 
 class LocationService extends ChangeNotifier {
-  final String baseUrl = 'https://booking-app-1-bzfs.onrender.com';
+  final String baseUrl = 'http://167.172.78.63:3000';
   final _storage = FlutterSecureStorage();
   bool isLoading = false;
   List<Location> locations = [];

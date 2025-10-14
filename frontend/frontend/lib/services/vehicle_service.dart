@@ -10,8 +10,7 @@ class VehicleService extends ChangeNotifier {
   bool isLoading = false;
   String? error;
 
-  final String baseUrl =
-      'https://booking-app-1-bzfs.onrender.com'; // API server URL
+  final String baseUrl = 'http://167.172.78.63:3000'; // API server URL
 
   Future<void> fetchVehicles() async {
     isLoading = true;
