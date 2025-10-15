@@ -244,7 +244,7 @@ class MyApp extends StatelessWidget {
           );
         },
         navigatorObservers: [
-          RouteObserver(
+          CustomRouteObserver(
             onNavigate: (routeName) async {
               if (_isValidRoute(routeName)) {
                 final storage = FlutterSecureStorage();
@@ -281,10 +281,10 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class RouteObserver extends NavigatorObserver {
+class CustomRouteObserver extends NavigatorObserver {
   final Function(String) onNavigate;
 
-  RouteObserver({required this.onNavigate});
+  CustomRouteObserver({required this.onNavigate});
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {

@@ -16,7 +16,6 @@ class SeatService extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     final token = await storage.readToken('accessToken');
-    print("🧠 Using token for API call: $token");
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/seats'),
@@ -43,7 +42,7 @@ class SeatService extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     final token = await storage.readToken('accessToken');
-    print("🧠 Using token for API call: $token");
+
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/seats/trip/$tripId'),
@@ -53,6 +52,8 @@ class SeatService extends ChangeNotifier {
         final data = jsonDecode(response.body) as List;
         seats = data.map((e) => Seat.fromJson(e)).toList();
         print('Fetched seats for tripId $tripId: $seats');
+        print('Fetching from: $baseUrl/seats/trip/$tripId');
+        print('Token: $token');
       } else {
         throw Exception(
             'Failed to fetch seats by tripId: ${response.statusCode} - ${response.body}');
@@ -70,7 +71,6 @@ class SeatService extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     final token = await storage.readToken('accessToken');
-    print("🧠 Using token for API call: $token");
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/seats/available/$tripId'),
